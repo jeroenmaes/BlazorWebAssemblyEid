@@ -1,0 +1,103 @@
+﻿@page "/eid"
+@inject NavigationManager NavManager
+
+@using BlazorWebAssemblyEidShared
+@using IdentityModel.Client
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.AspNetCore.Components.WebAssembly.Http;
+@using Newtonsoft.Json
+@using Newtonsoft.Json.Linq
+
+
+<PageTitle>eID viewer</PageTitle>
+
+<h1>eID viewer</h1>
+
+<p role="status">Session: @state</p>
+
+<p role="status">UserInfo: </p>
+<pre><code class="language-json">@userInfo</code></pre>
+
+<button class="btn btn-primary" @onclick="Go">Go</button>
+
+@code {
+
+    private string returncode = "";
+    private string state = "";
+    private string userInfo = "";
+
+    private string redirectUrl = "";
+    private string baseuiUrl = "https://xyz.azurewebsites.net";
+    private string baseapiUrl = "https://xyzapi.azurewebsites.net";
+
+    protected override async Task OnInitializedAsync()
+    {
+        redirectUrl = baseuiUrl + "/eid";
+        var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
+
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("code", out var _code))
+        {
+            returncode = _code;
+        }
+
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("state", out var _state))
+        {
+            state = _state;
+        }
+
+        if (returncode != "" && state != "")
+        {
+            var client = new HttpClient();
+
+            var query = new Dictionary<string, string>()
+                {
+                    ["state"] = state,
+                    ["returnCode"] = returncode,
+                    ["redirectUrl"] = redirectUrl
+                };
+
+            var uri2 = QueryHelpers.AddQueryString(baseapiUrl + "/Eid/GetUserInfo", query);
+
+            var result = await client.GetAsync(uri2);                        
+            var userInfoObject = await result.Content.ReadAsStringAsync();
+
+            JObject json = JObject.Parse(userInfoObject);
+            userInfo = json.ToString(Formatting.Indented);
+        }
+    }
+
+    private async Task Go()
+    {        
+        state = Guid.NewGuid().ToString();
+
+        var client = new HttpClient();
+
+        var query = new Dictionary<string, string>()
+            {
+                ["state"] = state,
+                ["redirectUrl"] = redirectUrl
+            };
+
+        var uri2 = QueryHelpers.AddQueryString(baseapiUrl + "/Eid/RegisterClient", query);
+
+        var response = await client.GetAsync(uri2);
+        var objectResponse = await response.Content.ReadFromJsonAsync<ClientRegistrationResponse>();
+
+        var clientId = objectResponse.ClientId;
+        var clientSecret = objectResponse.ClientSecret;
+
+        var ru = new RequestUrl("https://www.e-contract.be/eid-idp/oidc/ident/authorize");
+
+        var url = ru.CreateAuthorizeUrl(
+        clientId: clientId,
+        responseType: "code",
+        redirectUri: redirectUrl,
+        state: state,
+        //nonce: "xyz", -> https://stackoverflow.com/questions/48187559/purpose-of-state-and-nonce-in-openid-connect-code-flow
+        scope: "openid profile address",
+        responseMode: "query");
+
+
+        NavManager.NavigateTo(url);
+    }
+}
