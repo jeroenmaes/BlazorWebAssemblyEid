@@ -16,12 +16,12 @@
 
 <h1>eID viewer</h1>
 
-<p role="status">Session: @state</p>
-
-<p role="status">UserInfo: </p>
-<pre><code class="language-json">@userInfo</code></pre>
-
 <button class="btn btn-primary" @onclick="Go">Go</button>
+
+@*<p role="status">Session: @state</p>*@
+
+@*<p role="status">UserInfo: </p>*@
+<pre><code class="language-json">@userInfo</code></pre>
 
 @code {
 
@@ -69,6 +69,8 @@
 
             JObject json = JObject.Parse(userInfoObject);
             userInfo = json.ToString(Formatting.Indented);
+
+            NavManager.NavigateTo("/eid");
         }
     }
 
@@ -90,7 +92,7 @@
         var objectResponse = await response.Content.ReadFromJsonAsync<ClientRegistrationResponse>();
 
         var clientId = objectResponse.ClientId;
-        var clientSecret = objectResponse.ClientSecret;
+        //var clientSecret = objectResponse.ClientSecret;
 
         var ru = new RequestUrl("https://www.e-contract.be/eid-idp/oidc/ident/authorize");
 

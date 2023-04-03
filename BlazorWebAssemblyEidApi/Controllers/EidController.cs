@@ -2,6 +2,7 @@
 using BlazorWebAssemblyEidShared;
 using IdentityModel.Client;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BlazorWebAssemblyEidApi.Controllers
 {
@@ -53,11 +54,15 @@ namespace BlazorWebAssemblyEidApi.Controllers
         {
             var clientInfo = clientRegistrationStore.GetValueOrDefault(state);
 
-            var token = await GetToken(returnCode, redirectUrl, clientInfo.ClientId, clientInfo.ClientSecret);
+            if(clientInfo != null)
+            {
+                var token = await GetToken(returnCode, redirectUrl, clientInfo.ClientId, clientInfo.ClientSecret);
 
-            clientRegistrationStore.Remove(state);
+                clientRegistrationStore.Remove(state);
+                return await InternalGetUserInfo(token);
+            }
 
-            return await InternalGetUserInfo(token);
+            return new UserResponse { Error = "Invalid State" };
         }
 
         private async Task<UserResponse> InternalGetUserInfo(string token)
@@ -86,12 +91,11 @@ namespace BlazorWebAssemblyEidApi.Controllers
             var response = await client.RequestAuthorizationCodeTokenAsync(new AuthorizationCodeTokenRequest
             {
                 Address = _baseUrl + "/token",
-
                 ClientId = ClientId,
                 ClientSecret = ClientSecret,
                 Code = returnCode,
                 RedirectUri = redirectUrl,
-                GrantType = "authorization_code"
+                GrantType = "authorization_code"                
             });
 
             return response.AccessToken;
