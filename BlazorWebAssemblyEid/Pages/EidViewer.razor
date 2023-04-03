@@ -1,6 +1,9 @@
 ﻿@page "/eid"
 @inject NavigationManager NavManager
 
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+
 @using BlazorWebAssemblyEidShared
 @using IdentityModel.Client
 @using Microsoft.AspNetCore.WebUtilities
@@ -27,11 +30,14 @@
     private string userInfo = "";
 
     private string redirectUrl = "";
-    private string baseuiUrl = "https://xyz.azurewebsites.net";
-    private string baseapiUrl = "https://xyzapi.azurewebsites.net";
+    private string baseuiUrl = "";
+    private string baseapiUrl = "";
 
     protected override async Task OnInitializedAsync()
     {
+        baseuiUrl = Configuration["UI__URL"];
+        baseapiUrl = Configuration["API__URL"];
+
         redirectUrl = baseuiUrl + "/eid";
         var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
 
